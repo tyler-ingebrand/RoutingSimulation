@@ -1,0 +1,48 @@
+import os
+
+from matplotlib import pyplot as plt
+from src.alg.run import run
+from src.alg.RoutingAgent import RoutingAgent
+from  src.mdp.NetworkMDP import *
+import matplotlib.image
+from moviepy.editor import *
+
+
+# create env
+env = RoutingEnv(render_mode=None)
+print(env.observation_space)
+print(env.action_space)
+
+# create agent
+agent = RoutingAgent(env.observation_space, env.action_space)
+
+
+# train for some number of steps
+accumulated_rewards = run(env, agent, steps=100_000, train=True, show_progress= True)
+
+for q_agent in agent.agents:
+    print(q_agent.q_function)
+
+# save learning graph
+os.makedirs("results", exist_ok=True)
+plt.plot(accumulated_rewards)
+plt.xlabel("Episode")
+plt.ylabel("Accumulated Reward")
+plt.title("Learning Curve")
+plt.savefig("results/learning_curve.png")
+
+# show episode, save
+env = RoutingEnv(render_mode="rgb_array")
+seconds_per_frame = 0.1
+base_file_name = "experiment"
+for episode in range(10):
+    images = []
+    done = False
+    obs, _ = env.reset()
+    for t in range(100):
+        action = agent.act(obs, env.get_costs())
+        obs, rewards, dones, truncated, info = env.step(action)
+        frame = env.render()
+        images.append(ImageClip(frame).set_duration(seconds_per_frame))
+    video = concatenate(images, method="compose")
+    video.write_videofile("results/episode_{}.mp4".format(episode), fps=24)
