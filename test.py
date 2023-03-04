@@ -6,6 +6,14 @@ from src.alg.RoutingAgent import RoutingAgent
 from  src.mdp.NetworkMDP import *
 import matplotlib.image
 from moviepy.editor import *
+import torch
+import numpy
+
+
+# seed
+seed = 2
+numpy.random.seed(seed)
+torch.manual_seed(seed)
 
 
 # create env
@@ -19,9 +27,7 @@ agent = RoutingAgent(env.observation_space, env.action_space)
 
 # train for some number of steps
 accumulated_rewards = run(env, agent, steps=100_000, train=True, show_progress= True)
-
-for q_agent in agent.agents:
-    print(q_agent.q_function)
+accumulated_rewards = [np.mean(accumulated_rewards[max(i-5, 0):i+1]) for i in range(len(accumulated_rewards))]
 
 # save learning graph
 os.makedirs("results", exist_ok=True)

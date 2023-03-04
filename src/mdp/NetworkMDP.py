@@ -58,16 +58,17 @@ class Channel:
     
 
 class Connection:
-    def __init__(self, channels, start, end) -> None:
+    def __init__(self, channels, start, end, color=(0,0,0)) -> None:
         self.channels = channels
         self.start = start
         self.end = end
         self.cost = 0
+        self.color = color
 
     def render(self, canvas, size):
         pygame.draw.line(
                 canvas,
-                0,
+                self.color,
                 (self.start.render_x * size, self.start.render_y * size),
                 (self.end.render_x * size, self.end.render_y * size),
                 width=3,
@@ -109,7 +110,8 @@ class RoutingEnv(gym.Env):
                 Channel(first, second, packet_loss=0.5),
                 ],
                 start=first,
-                end=second
+                end=second,
+                color=(255,0,0)
                 )
             )
 
