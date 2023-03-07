@@ -10,14 +10,16 @@ class Result(Enum):
 
 
 class Node:
-    def __init__(self, name, render_x, render_y, is_destination=False, max=4) -> None:
+    def __init__(self, name, render_x, render_y, s_x, s_y, is_destination=False, max=4) -> None:
         self.messages_to_send = 0
         self.messages_to_send_limit = max
         self.is_destination = is_destination
         self.render_x = render_x
         self.render_y = render_y
         self.name = name
-
+        self.img = pygame.image.load('phone.png')
+        self.s_x = s_x
+        self.s_y = s_y
     def add_message(self):
         if self.messages_to_send < self.messages_to_send_limit:
             self.messages_to_send += 1
@@ -26,16 +28,18 @@ class Node:
             return Result.LOST
     
     def render(self, canvas, size):
-        pygame.draw.circle(
-                canvas,
-                (128,128,128),
-                (self.render_x * size, self.render_y * size),
-                0.1 * size,
-            )
+        canvas.blit(self.img, ((self.render_x-.025) * size, (self.render_y-0.05) * size))
+
+        # pygame.draw.circle(
+        #         canvas,
+        #         (128,128,128),
+        #         (self.render_x * size, self.render_y * size),
+        #         0.1 * size,
+        #     )
         s = "{} ({})".format(self.name, self.messages_to_send)
         my_font = pygame.font.SysFont('Comic Sans MS', 25)
         text_surface = my_font.render(s, False, 'black')
-        canvas.blit(text_surface, (self.render_x * size - 5 * len(s), self.render_y * size - 5 ))
+        canvas.blit(text_surface, (self.s_x * size, self.s_y * size ))
 
 
 class Channel:
@@ -46,13 +50,13 @@ class Channel:
         self.end = end
 
     def send_message(self):
-        # message lost,retry
+        self.start.messages_to_send -= 1
+
+        # lost
         if np.random.rand() < self.packet_loss:
             return Result.LOST
         
         ack = self.end.add_message()
-        if ack == Result.RECIEVED:
-            self.start.messages_to_send -= 1
         return ack
 
     
@@ -64,15 +68,20 @@ class Connection:
         self.end = end
         self.cost = 0
         self.color = color
+        self.img = pygame.transform.scale(pygame.image.load('fire.jpg'), (100, 100))
 
     def render(self, canvas, size):
         pygame.draw.line(
                 canvas,
-                self.color,
+                0, # self.color,
                 (self.start.render_x * size, self.start.render_y * size),
                 (self.end.render_x * size, self.end.render_y * size),
                 width=3,
             )
+        if self.color[0] == 255:
+            mid_x = (self.start.render_x + self.end.render_x)/2 * size - 50
+            mid_y = (self.start.render_y + self.end.render_y)/2 * size - 50
+            canvas.blit(self.img, (mid_x, mid_y))
 
     def update_cost(self, actions):
         if all([a == 0 for a in actions]):
@@ -87,27 +96,24 @@ class Connection:
 class RoutingEnv(gym.Env):
 
     def __init__(self, render_mode="human") -> None:
-        self.nodes = [Node("Start", 0.3, 0.1), 
-                      Node("B", 0.2, .4), 
-                      Node("C", 0.2, .7), 
-                      Node("D", .6, 0.1), 
-                      Node("E", .5, .5), 
-                      Node("F", 0.9, .4), 
-                      Node("Goal", 0.5, 0.9, is_destination=True, max=10000)]
+        self.nodes = [Node("Start", 0.1, 0.1, 0.15, 0.15 ),
+                      Node("B", 0.1, .9, 0.15, 0.8),
+                      Node("C", 0.9, .1,0.8, 0.15 ),
+                      Node("Goal", 0.9, 0.9, 0.75, 0.8,is_destination=True, max=10000)]
 
 
         # connect all nodes with 3 channels of different risks
         self.connections = []
 
         #  add high risk connections
-        pairs = [(0,1), (1,2), (2,6),]
+        pairs = [(0,1), (1,3),]
         for p in pairs:
             first = self.nodes[p[0]]
             second = self.nodes[p[1]]
             self.connections.append(Connection([
-                Channel(first, second, packet_loss=0.1),
-                Channel(first, second, packet_loss=0.2),
+                Channel(first, second, packet_loss=0.4),
                 Channel(first, second, packet_loss=0.5),
+                Channel(first, second, packet_loss=0.9),
                 ],
                 start=first,
                 end=second,
@@ -116,14 +122,14 @@ class RoutingEnv(gym.Env):
             )
 
         #  add low risk connections
-        pairs = [(0,3), (3, 4), (4,3), (3,5), (5,6)]
+        pairs = [(0,2), (2, 3),]
         for p in pairs:
             first = self.nodes[p[0]]
             second = self.nodes[p[1]]
             self.connections.append(Connection([
-                Channel(first, second, packet_loss=0.001),
                 Channel(first, second, packet_loss=0.01),
-                Channel(first, second, packet_loss=0.1),
+                Channel(first, second, packet_loss=0.2),
+                Channel(first, second, packet_loss=0.5),
                 ],
                 start=first,
                 end=second
@@ -179,16 +185,20 @@ class RoutingEnv(gym.Env):
         self._update_costs(action)
 
         # add new messages
-        self.nodes[0].messages_to_send = self.nodes[0].messages_to_send + 1
+        if self.time < self.time_limit - 4:
+            self.nodes[0].messages_to_send = self.nodes[0].messages_to_send + 1
 
         self.time += 1
         return obs, rewards, False, self.time > self.time_limit, {}
 
     def reset(self):
         self.time = 0
+        total_messages = 96
+        messages_at_goal = self.nodes[-1].messages_to_send
+        success_rate = messages_at_goal/total_messages
         for n in self.nodes:
             n.messages_to_send = 0
-        return self._observation(), {}
+        return self._observation(), {"success_rate":success_rate}
 
 
     def render(self):

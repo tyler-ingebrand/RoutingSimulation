@@ -18,6 +18,7 @@ print(env.action_space)
 for episode in range(10):
     done = False
     obs, _ = env.reset()
+    print(_)
     for t in range(100):
         action = env.action_space.sample()
         obs, rewards, dones, truncated, info = env.step(action)

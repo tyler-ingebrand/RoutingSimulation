@@ -14,7 +14,7 @@ class RoutingAgent:
                 agent = Tabular_Q_Agent(state_space[0], MultiBinary(3),  )
                 self.agents.append(agent)
             self.next_node_index = [None for i in range(len(state_space.nvec))]
-            self.edges = [(0, 1), (1, 2), (2, 6),(0,3), (3, 4), (4,3), (3,5), (5,6)]
+            self.edges = [(0, 1), (1, 3), (0, 2),(2,3),]
 
 
         # returns  an action for the given state.
@@ -48,7 +48,7 @@ class RoutingAgent:
                 graph.add_edge(e[0], e[1], c)
 
             # run djikstras
-            path = find_path(graph, 0, 6)
+            path = find_path(graph, 0, 3)
 
             # keep track of next node for each node.
             for i in range(len(path.nodes)-1):

@@ -26,7 +26,7 @@ agent = RoutingAgent(env.observation_space, env.action_space)
 
 
 # train for some number of steps
-accumulated_rewards = run(env, agent, steps=100_000, train=True, show_progress= True)
+accumulated_rewards, success_rates = run(env, agent, steps=100_000, train=True, show_progress= True)
 accumulated_rewards = [np.mean(accumulated_rewards[max(i-5, 0):i+1]) for i in range(len(accumulated_rewards))]
 
 # save learning graph
@@ -36,6 +36,19 @@ plt.xlabel("Episode")
 plt.ylabel("Accumulated Reward")
 plt.title("Learning Curve")
 plt.savefig("results/learning_curve.png")
+plt.clf()
+
+# save success rates
+plt.plot(success_rates)
+plt.ylim(0.0, 1.0)
+plt.xlabel("Episode")
+plt.ylabel("Message Success Rate")
+plt.title("Probability of Message Transmission")
+plt.savefig("results/success_rate.png")
+plt.clf()
+
+
+
 
 # show episode, save
 env = RoutingEnv(render_mode="rgb_array")

@@ -15,6 +15,7 @@ def run(            env: RoutingEnv,
 
     ret = []
     current_reward = 0
+    success_rates = []
 
     # This iterable shows progress, or is a normal range depending
     r = range(steps) if not show_progress else trange(steps)
@@ -36,8 +37,9 @@ def run(            env: RoutingEnv,
             ret.append(current_reward)
             current_reward = 0
             nobs, _ = env.reset()
+            success_rates.append(_["success_rate"])
         obs = nobs
 
     # wrap up
     env.close()
-    return ret
+    return ret, success_rates
